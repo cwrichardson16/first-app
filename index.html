@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Runner - Neon Adventure</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1 class="game-title">NINJA RUNNER</h1>
+            <div class="score-display">
+                <span class="score-label">SCORE:</span>
+                <span class="score" id="score">0</span>
+                <span class="high-score-label">HI:</span>
+                <span class="high-score" id="highScore">0</span>
+            </div>
+        </div>
+        
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        
+        <div class="game-info">
+            <p class="instructions">Press SPACE or CLICK to jump over obstacles!</p>
+            <button class="start-button" id="startButton">START GAME</button>
+            <div class="game-over" id="gameOver">
+                <h2>GAME OVER</h2>
+                <p>Your Score: <span id="finalScore">0</span></p>
+                <button class="restart-button" id="restartButton">PLAY AGAIN</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
