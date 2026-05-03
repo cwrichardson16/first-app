@@ -5,6 +5,15 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
+function isValidTimeZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const settingsSchema = z.object({
   display_name: z.string().trim().min(1).max(60).optional(),
   calorie_target: z.coerce.number().int().min(500).max(10000).optional(),
@@ -18,7 +27,12 @@ const settingsSchema = z.object({
   goal_weight: z.coerce.number().min(50).max(700).nullable().optional(),
   weekly_loss_target: z.coerce.number().min(0).max(10).nullable().optional(),
   units: z.enum(["imperial", "metric"]).optional(),
-  timezone: z.string().min(1).max(80).optional(),
+  timezone: z
+    .string()
+    .min(1)
+    .max(80)
+    .refine(isValidTimeZone, { message: "Invalid timezone" })
+    .optional(),
 });
 
 export async function updateSettings(input: unknown) {

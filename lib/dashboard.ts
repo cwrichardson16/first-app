@@ -143,7 +143,8 @@ export async function getDashboardData(
     const sumY = ys.reduce((a, b) => a + b, 0);
     const sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
     const sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX); // lbs/day
+    const denom = n * sumX2 - sumX * sumX;
+    const slope = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0; // lbs/day
     const lastWeight = ys[ys.length - 1];
     if (slope < -0.01) {
       const daysToGoal = (targets.goal_weight - lastWeight) / slope; // positive

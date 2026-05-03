@@ -4,9 +4,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
+const UUID_RE = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+const STORAGE_PATH_RE = /^[a-f0-9-]{36}\/[a-f0-9-]{36}\.jpg$/;
+
 const photoSchema = z.object({
   photo_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  storage_path: z.string().min(1).max(500),
+  storage_path: z.string().regex(STORAGE_PATH_RE, "Invalid storage path"),
   pose: z.enum(["front", "side", "back", "other"]).default("front"),
   weight_at_time: z.coerce.number().min(50).max(700).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
@@ -23,7 +26,8 @@ export async function recordPhoto(input: unknown) {
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   const data = parsed.data;
 
-  if (!data.storage_path.startsWith(`${user.id}/`)) {
+  const [folder] = data.storage_path.split("/");
+  if (!UUID_RE.test(folder) || folder !== user.id) {
     return { error: "Invalid storage path" };
   }
 

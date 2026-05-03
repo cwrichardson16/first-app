@@ -57,9 +57,24 @@ export default async function PartnerPage() {
     .eq("user_id", link.partner_id)
     .maybeSingle();
 
+  // Fall back to schema defaults (NOT my targets — those would be misleading)
   const partnerSettings: UserSettings = partnerSettingsRow ?? {
-    ...mySettings,
     user_id: link.partner_id,
+    display_name: "Partner",
+    calorie_target: 1950,
+    protein_target: 200,
+    fat_target: 65,
+    carb_target: 150,
+    water_target_oz: 128,
+    step_target: 10000,
+    sleep_target_hours: 8,
+    start_weight: null,
+    goal_weight: null,
+    weekly_loss_target: 1.25,
+    units: "imperial",
+    timezone: mySettings.timezone,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 
   // Last workout per side

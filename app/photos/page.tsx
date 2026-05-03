@@ -33,7 +33,7 @@ export default async function PhotosPage() {
     (photos ?? []).map(async (p) => {
       const { data: signed } = await supabase.storage
         .from("progress-photos")
-        .createSignedUrl(p.storage_path, 3600);
+        .createSignedUrl(p.storage_path, 60 * 60 * 8);
       return {
         id: p.id,
         photo_date: p.photo_date,

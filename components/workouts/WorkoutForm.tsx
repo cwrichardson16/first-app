@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
-import { createWorkout, updateWorkout, deleteWorkout, type WorkoutInput } from "@/app/actions/workout";
+import { createWorkout, updateWorkout, deleteWorkout } from "@/app/actions/workout";
 
 type SetDraft = { weight: string; reps: string; rpe: string };
 type ExerciseDraft = { exercise_name: string; sets: SetDraft[] };
@@ -145,12 +145,11 @@ export function WorkoutForm(props: WorkoutFormProps) {
       return;
     }
 
-    const payload: WorkoutInput = {
+    const payload = {
       workout_date: date,
       name: name.trim(),
       notes: notes.trim() || null,
       duration_minutes: duration ? parseInt(duration, 10) : null,
-      // @ts-expect-error zod will coerce string|number unions
       exercises: cleanExercises,
     };
 
