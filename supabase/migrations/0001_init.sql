@@ -228,22 +228,22 @@ create policy "workouts_delete_own" on workouts for delete
 create policy "exercise_sets_select_own_or_partner" on exercise_sets for select
   using (
     exists (
-      select 1 from workouts w
-      where w.id = exercise_sets.workout_id
-        and (w.user_id = auth.uid() or w.user_id = current_partner_id())
+      select 1 from workouts
+      where workouts.id = exercise_sets.workout_id
+        and (workouts.user_id = auth.uid() or workouts.user_id = current_partner_id())
     )
   );
 create policy "exercise_sets_insert_own" on exercise_sets for insert
   with check (
-    exists (select 1 from workouts w where w.id = exercise_sets.workout_id and w.user_id = auth.uid())
+    exists (select 1 from workouts where workouts.id = exercise_sets.workout_id and workouts.user_id = auth.uid())
   );
 create policy "exercise_sets_update_own" on exercise_sets for update
   using (
-    exists (select 1 from workouts w where w.id = exercise_sets.workout_id and w.user_id = auth.uid())
+    exists (select 1 from workouts where workouts.id = exercise_sets.workout_id and workouts.user_id = auth.uid())
   );
 create policy "exercise_sets_delete_own" on exercise_sets for delete
   using (
-    exists (select 1 from workouts w where w.id = exercise_sets.workout_id and w.user_id = auth.uid())
+    exists (select 1 from workouts where workouts.id = exercise_sets.workout_id and workouts.user_id = auth.uid())
   );
 
 -- progress_photos: self CRUD + partner SELECT
