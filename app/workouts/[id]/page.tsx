@@ -4,7 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/BottomNav";
 import { WorkoutForm } from "@/components/workouts/WorkoutForm";
-import { requireUser } from "@/lib/auth";
+import { requireUser, getSettings } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   getWorkoutWithSets,
@@ -16,15 +16,26 @@ export const dynamic = "force-dynamic";
 
 export default async function WorkoutDetailPage({ params }: { params: { id: string } }) {
   const user = await requireUser();
+  const settings = await getSettings();
   const supabase = createClient();
   const workout = await getWorkoutWithSets(params.id, user.id);
   if (!workout) notFound();
 
-  const [workoutNames, exerciseNames, { data: partner }] = await Promise.all([
-    getWorkoutNameSuggestions(user.id),
-    getExerciseNameSuggestions(user.id),
-    supabase.from("partner_link").select("partner_id").eq("user_id", user.id).maybeSingle(),
-  ]);
+  const [workoutNames, exerciseNames, { data: partner }, { data: latestWeightRow }] =
+    await Promise.all([
+      getWorkoutNameSuggestions(user.id),
+      getExerciseNameSuggestions(user.id),
+      supabase.from("partner_link").select("partner_id").eq("user_id", user.id).maybeSingle(),
+      supabase
+        .from("daily_logs")
+        .select("weight")
+        .eq("user_id", user.id)
+        .not("weight", "is", null)
+        .order("log_date", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+  const currentWeightLb = latestWeightRow?.weight ?? settings.start_weight ?? null;
 
   return (
     <main className="container max-w-2xl pb-28 pt-4 space-y-4">
@@ -54,6 +65,7 @@ export default async function WorkoutDetailPage({ params }: { params: { id: stri
         }}
         workoutNameSuggestions={workoutNames}
         exerciseNameSuggestions={exerciseNames}
+        currentWeightLb={currentWeightLb}
       />
 
       <BottomNav hasPartner={!!partner} />

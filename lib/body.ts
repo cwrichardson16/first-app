@@ -120,22 +120,34 @@ export function energyPicture(input: {
   weeklyLossLb: number | null;
 }): EnergyPicture {
   const { currentWeightLb, heightIn, sex, birthdate, activity } = input;
-  if (!currentWeightLb || !heightIn || !sex || !birthdate) {
-    return { bmr: null, tdee: null, bmi: null, bmiCategory: null, suggestedCalories: null };
-  }
-  const age = ageFromBirthdate(birthdate);
-  const b = bmr({ weightLb: currentWeightLb, heightIn, ageYears: age, sex });
-  const t = activity ? tdee({ bmrKcal: b, activity }) : null;
-  const bmiVal = bmi(currentWeightLb, heightIn);
+
+  // BMI only needs weight + height — show it as soon as both are present.
+  const bmiVal =
+    currentWeightLb && heightIn ? bmi(currentWeightLb, heightIn) : null;
+
+  // BMR adds sex + birthdate.
+  const b =
+    currentWeightLb && heightIn && sex && birthdate
+      ? bmr({
+          weightLb: currentWeightLb,
+          heightIn,
+          ageYears: ageFromBirthdate(birthdate),
+          sex,
+        })
+      : null;
+
+  const t = b !== null && activity ? tdee({ bmrKcal: b, activity }) : null;
+
   const sug =
     t !== null && input.weeklyLossLb
       ? suggestedCalorieTarget({ tdeeKcal: t, weeklyLossLb: input.weeklyLossLb })
       : null;
+
   return {
     bmr: b,
     tdee: t,
     bmi: bmiVal,
-    bmiCategory: bmiCategory(bmiVal),
+    bmiCategory: bmiVal !== null ? bmiCategory(bmiVal) : null,
     suggestedCalories: sug,
   };
 }

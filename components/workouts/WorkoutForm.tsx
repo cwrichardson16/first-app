@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { createWorkout, updateWorkout, deleteWorkout } from "@/app/actions/workout";
+import { workoutCaloriesBurned } from "@/lib/body";
 
 type SetDraft = { weight: string; reps: string; rpe: string };
 type ExerciseDraft = { exercise_name: string; sets: SetDraft[] };
@@ -30,6 +31,7 @@ export type WorkoutFormProps = {
   defaultDate: string;
   workoutNameSuggestions: string[];
   exerciseNameSuggestions: string[];
+  currentWeightLb: number | null;
 };
 
 export function WorkoutForm(props: WorkoutFormProps) {
@@ -249,9 +251,11 @@ export function WorkoutForm(props: WorkoutFormProps) {
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Used with duration + your weight to estimate calories burned.
-            </p>
+            <CaloriePreview
+              intensity={intensity || null}
+              durationMin={duration ? parseInt(duration, 10) : null}
+              weightLb={props.currentWeightLb}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="name">Workout name</Label>
@@ -328,6 +332,37 @@ export function WorkoutForm(props: WorkoutFormProps) {
         )}
       </div>
     </form>
+  );
+}
+
+function CaloriePreview({
+  intensity,
+  durationMin,
+  weightLb,
+}: {
+  intensity: Intensity | null;
+  durationMin: number | null;
+  weightLb: number | null;
+}) {
+  if (!intensity || !durationMin || durationMin <= 0) {
+    return (
+      <p className="text-[11px] text-muted-foreground">
+        Set intensity + duration to estimate calories burned.
+      </p>
+    );
+  }
+  if (!weightLb) {
+    return (
+      <p className="text-[11px] text-muted-foreground">
+        Log a weight or set a start weight in settings to estimate calories.
+      </p>
+    );
+  }
+  const kcal = workoutCaloriesBurned({ intensity, durationMin, weightLb });
+  return (
+    <p className="text-[11px] text-muted-foreground tabular-nums">
+      Estimated burn: <span className="font-semibold text-foreground">~{kcal} kcal</span>
+    </p>
   );
 }
 

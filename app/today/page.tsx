@@ -77,7 +77,7 @@ export default async function TodayPage({
       .not("sleep_hours", "is", null),
     supabase
       .from("workouts")
-      .select("id, name")
+      .select("id, name, calories_burned, duration_minutes")
       .eq("user_id", user.id)
       .eq("workout_date", logDate)
       .order("created_at", { ascending: false })
@@ -157,7 +157,14 @@ export default async function TodayPage({
               className="block rounded-lg border p-3 hover:bg-accent"
             >
               <p className="font-medium">{workoutToday.name}</p>
-              <p className="text-xs text-muted-foreground">Tap to view</p>
+              <p className="text-xs text-muted-foreground tabular-nums">
+                {workoutToday.duration_minutes
+                  ? `${workoutToday.duration_minutes} min`
+                  : "Tap to view"}
+                {workoutToday.calories_burned
+                  ? ` · ~${workoutToday.calories_burned} kcal burned`
+                  : ""}
+              </p>
             </Link>
           ) : (
             <Button asChild className="w-full" size="lg">
