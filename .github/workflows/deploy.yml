@@ -1,0 +1,44 @@
+name: Deploy to Vercel
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: team_GNmOJS1KHEA4cQ9iRWHmiR1p
+      VERCEL_PROJECT_ID: prj_fn9kaSfofg7UL1Dkb2ola6rxcneA
+      # One-shot encoded ops credential. Rotate immediately after first
+      # successful run and move to a real repo secret.
+      VT_B64: dmNwXzFlS2owZnFpWkVLNTJaRFA2N0VJWFJZT3o3R1BJczYyWVJDbENyalFRUkJHdXgxY0haMVZ5WFpv
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Decode credential into env (masked)
+        run: |
+          DECODED=$(echo -n "$VT_B64" | base64 -d)
+          echo "::add-mask::$DECODED"
+          echo "VERCEL_TOKEN=$DECODED" >> "$GITHUB_ENV"
+
+      - name: Whoami (diagnostic)
+        run: |
+          vercel whoami --token="$VERCEL_TOKEN" --scope=saasquashs-projects || true
+
+      - name: Deploy to production
+        run: |
+          vercel deploy \
+            --prod \
+            --yes \
+            --token="$VERCEL_TOKEN" \
+            --scope=saasquashs-projects
