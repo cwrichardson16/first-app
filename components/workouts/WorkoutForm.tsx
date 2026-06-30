@@ -14,6 +14,8 @@ import { createWorkout, updateWorkout, deleteWorkout } from "@/app/actions/worko
 type SetDraft = { weight: string; reps: string; rpe: string };
 type ExerciseDraft = { exercise_name: string; sets: SetDraft[] };
 
+type Intensity = "light" | "moderate" | "vigorous";
+
 export type WorkoutFormProps = {
   mode: "create" | "edit";
   workoutId?: string;
@@ -22,6 +24,7 @@ export type WorkoutFormProps = {
     name: string;
     notes: string | null;
     duration_minutes: number | null;
+    intensity: Intensity | null;
     exercises: { exercise_name: string; sets: { weight: number | null; reps: number | null; rpe: number | null }[] }[];
   };
   defaultDate: string;
@@ -37,6 +40,9 @@ export function WorkoutForm(props: WorkoutFormProps) {
   const [name, setName] = React.useState(props.initial?.name ?? "");
   const [duration, setDuration] = React.useState(
     props.initial?.duration_minutes ? String(props.initial.duration_minutes) : "",
+  );
+  const [intensity, setIntensity] = React.useState<Intensity | "">(
+    props.initial?.intensity ?? "",
   );
   const [notes, setNotes] = React.useState(props.initial?.notes ?? "");
   const [exercises, setExercises] = React.useState<ExerciseDraft[]>(
@@ -150,6 +156,7 @@ export function WorkoutForm(props: WorkoutFormProps) {
       name: name.trim(),
       notes: notes.trim() || null,
       duration_minutes: duration ? parseInt(duration, 10) : null,
+      intensity: intensity || null,
       exercises: cleanExercises,
     };
 
@@ -214,6 +221,37 @@ export function WorkoutForm(props: WorkoutFormProps) {
                 placeholder="60"
               />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Intensity</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  { v: "light", l: "Light", h: "Easy / circuit" },
+                  { v: "moderate", l: "Moderate", h: "Standard lifting" },
+                  { v: "vigorous", l: "Vigorous", h: "Heavy / intense" },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setIntensity(intensity === opt.v ? "" : opt.v)}
+                  className={`rounded-md border px-2 py-2 text-left transition-colors ${
+                    intensity === opt.v
+                      ? "border-primary bg-primary/10"
+                      : "border-input"
+                  }`}
+                >
+                  <div className="text-sm font-medium">{opt.l}</div>
+                  <div className="text-[10px] text-muted-foreground leading-tight">
+                    {opt.h}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Used with duration + your weight to estimate calories burned.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="name">Workout name</Label>

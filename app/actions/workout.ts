@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { workoutCaloriesBurned } from "@/lib/body";
 
 const setSchema = z.object({
   weight: z
@@ -31,10 +32,47 @@ const workoutSchema = z.object({
   name: z.string().trim().min(1).max(60),
   notes: z.string().max(2000).optional().nullable(),
   duration_minutes: z.coerce.number().int().min(0).max(600).optional().nullable(),
+  intensity: z
+    .union([z.enum(["light", "moderate", "vigorous"]), z.literal(""), z.null()])
+    .transform((v) => (v === "" || v === null ? null : v))
+    .optional(),
   exercises: z.array(exerciseSchema).min(1),
 });
 
 export type WorkoutInput = z.infer<typeof workoutSchema>;
+
+// Best-available weight for calorie burn: most recent log, fall back to start weight.
+async function getCurrentWeightLb(userId: string): Promise<number | null> {
+  const supabase = createClient();
+  const { data: log } = await supabase
+    .from("daily_logs")
+    .select("weight")
+    .eq("user_id", userId)
+    .not("weight", "is", null)
+    .order("log_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (log?.weight) return log.weight;
+  const { data: settings } = await supabase
+    .from("user_settings")
+    .select("start_weight")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return settings?.start_weight ?? null;
+}
+
+function computeCalories(input: {
+  intensity: "light" | "moderate" | "vigorous" | null | undefined;
+  durationMin: number | null | undefined;
+  weightLb: number | null;
+}): number | null {
+  if (!input.intensity || !input.durationMin || !input.weightLb) return null;
+  return workoutCaloriesBurned({
+    weightLb: input.weightLb,
+    durationMin: input.durationMin,
+    intensity: input.intensity,
+  });
+}
 
 export async function createWorkout(input: unknown) {
   const supabase = createClient();
@@ -47,6 +85,13 @@ export async function createWorkout(input: unknown) {
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   const data = parsed.data;
 
+  const weightLb = await getCurrentWeightLb(user.id);
+  const calories_burned = computeCalories({
+    intensity: data.intensity,
+    durationMin: data.duration_minutes,
+    weightLb,
+  });
+
   const { data: workout, error: wErr } = await supabase
     .from("workouts")
     .insert({
@@ -55,6 +100,8 @@ export async function createWorkout(input: unknown) {
       name: data.name,
       notes: data.notes ?? null,
       duration_minutes: data.duration_minutes ?? null,
+      intensity: data.intensity ?? null,
+      calories_burned,
     })
     .select("id")
     .single();
@@ -93,6 +140,13 @@ export async function updateWorkout(workoutId: string, input: unknown) {
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   const data = parsed.data;
 
+  const weightLb = await getCurrentWeightLb(user.id);
+  const calories_burned = computeCalories({
+    intensity: data.intensity,
+    durationMin: data.duration_minutes,
+    weightLb,
+  });
+
   const { error: wErr } = await supabase
     .from("workouts")
     .update({
@@ -100,6 +154,8 @@ export async function updateWorkout(workoutId: string, input: unknown) {
       name: data.name,
       notes: data.notes ?? null,
       duration_minutes: data.duration_minutes ?? null,
+      intensity: data.intensity ?? null,
+      calories_burned,
     })
     .eq("id", workoutId)
     .eq("user_id", user.id);

@@ -24,6 +24,16 @@ type UserSettingsRow = {
   weekly_loss_target: number | null;
   units: "imperial" | "metric";
   timezone: string;
+  height_in: number | null;
+  sex: "male" | "female" | "other" | null;
+  birthdate: string | null;
+  activity_level:
+    | "sedentary"
+    | "light"
+    | "moderate"
+    | "active"
+    | "very_active"
+    | null;
   created_at: string;
   updated_at: string;
 };
@@ -81,6 +91,8 @@ type WorkoutRow = {
   name: string;
   notes: string | null;
   duration_minutes: number | null;
+  intensity: "light" | "moderate" | "vigorous" | null;
+  calories_burned: number | null;
   created_at: string;
 };
 

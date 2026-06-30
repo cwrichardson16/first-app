@@ -73,6 +73,10 @@ export default async function PartnerPage() {
     weekly_loss_target: 1.25,
     units: "imperial",
     timezone: mySettings.timezone,
+    height_in: null,
+    sex: null,
+    birthdate: null,
+    activity_level: "moderate",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

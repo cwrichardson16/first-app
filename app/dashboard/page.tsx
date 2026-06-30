@@ -75,7 +75,11 @@ export default async function DashboardPage() {
         <Stat
           label="Workouts this week"
           value={`${data.workoutsThisWeek}`}
-          sub="target: 6"
+          sub={
+            data.workoutCaloriesThisWeek > 0
+              ? `~${data.workoutCaloriesThisWeek.toLocaleString()} kcal burned`
+              : "target: 6"
+          }
         />
       </div>
 

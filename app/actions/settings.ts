@@ -14,6 +14,27 @@ function isValidTimeZone(tz: string): boolean {
   }
 }
 
+const optionalNumber = (min: number, max: number) =>
+  z
+    .union([z.coerce.number().min(min).max(max), z.literal(""), z.null()])
+    .transform((v) => (v === "" || v === null ? null : v))
+    .optional();
+
+const optionalEnum = <T extends string>(values: readonly T[]) =>
+  z
+    .union([z.enum(values as readonly [T, ...T[]]), z.literal(""), z.null()])
+    .transform((v) => (v === "" || v === null ? null : v))
+    .optional();
+
+const optionalDate = z
+  .union([
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    z.literal(""),
+    z.null(),
+  ])
+  .transform((v) => (v === "" || v === null ? null : v))
+  .optional();
+
 const settingsSchema = z.object({
   display_name: z.string().trim().min(1).max(60).optional(),
   calorie_target: z.coerce.number().int().min(500).max(10000).optional(),
@@ -33,6 +54,16 @@ const settingsSchema = z.object({
     .max(80)
     .refine(isValidTimeZone, { message: "Invalid timezone" })
     .optional(),
+  height_in: optionalNumber(36, 96),
+  sex: optionalEnum(["male", "female", "other"] as const),
+  birthdate: optionalDate,
+  activity_level: optionalEnum([
+    "sedentary",
+    "light",
+    "moderate",
+    "active",
+    "very_active",
+  ] as const),
 });
 
 export async function updateSettings(input: unknown) {

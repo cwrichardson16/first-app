@@ -46,6 +46,7 @@ export default async function WorkoutDetailPage({ params }: { params: { id: stri
           name: workout.name,
           notes: workout.notes,
           duration_minutes: workout.duration_minutes,
+          intensity: workout.intensity,
           exercises: workout.exercises.map((e) => ({
             exercise_name: e.name,
             sets: e.sets.map((s) => ({ weight: s.weight, reps: s.reps, rpe: s.rpe })),

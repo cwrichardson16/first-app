@@ -14,6 +14,7 @@ export type DashboardData = {
   projectedGoalDate: string | null;
   projectedRate: number | null;
   workoutsThisWeek: number;
+  workoutCaloriesThisWeek: number;
   workoutVolumeWeeks: { weekStart: string; volume: number }[];
 };
 
@@ -51,7 +52,7 @@ export async function getDashboardData(
       .lte("log_date", endDate),
     supabase
       .from("workouts")
-      .select("id, workout_date")
+      .select("id, workout_date, calories_burned")
       .eq("user_id", userId)
       .gte("workout_date", shiftDate(endDate, -28))
       .lte("workout_date", endDate),
@@ -188,9 +189,14 @@ export async function getDashboardData(
     workoutVolumeWeeks.push({ weekStart: ws, volume: Math.round(vol) });
   }
   const thisWeekStart = shiftDate(endDate, -6);
-  const workoutsThisWeek = (workouts ?? []).filter(
+  const thisWeekWorkouts = (workouts ?? []).filter(
     (w) => w.workout_date >= thisWeekStart && w.workout_date <= endDate,
-  ).length;
+  );
+  const workoutsThisWeek = thisWeekWorkouts.length;
+  const workoutCaloriesThisWeek = thisWeekWorkouts.reduce(
+    (sum, w) => sum + (w.calories_burned ?? 0),
+    0,
+  );
 
   return {
     weightSeries,
@@ -204,6 +210,7 @@ export async function getDashboardData(
     projectedGoalDate,
     projectedRate,
     workoutsThisWeek,
+    workoutCaloriesThisWeek,
     workoutVolumeWeeks,
   };
 }

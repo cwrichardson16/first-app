@@ -86,6 +86,7 @@ export default async function WorkoutsPage() {
                       <p className="font-medium truncate">{w.name}</p>
                       <p className="text-xs text-muted-foreground tabular-nums">
                         {prettyDate(w.workout_date)} · {exCount} ex · {ws.length} sets
+                        {w.calories_burned ? ` · ${w.calories_burned} kcal` : ""}
                       </p>
                     </div>
                     <p className="text-xs tabular-nums text-muted-foreground shrink-0">
