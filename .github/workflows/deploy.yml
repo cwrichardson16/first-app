@@ -1,10 +1,17 @@
 name: Deploy to Vercel
 
 on:
+  push:
+    branches:
+      - claude/cut-fitness-tracker-xMt80
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   deploy:
