@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Dumbbell, Camera, Settings, BarChart3, Users } from "lucide-react";
+import { CalendarDays, Dumbbell, Camera, Settings, BarChart3, Users, CalendarRange } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
@@ -12,6 +12,7 @@ export function BottomNav({ hasPartner }: { hasPartner: boolean }) {
 
   const items: NavItem[] = [
     { href: "/today", label: "Today", icon: CalendarDays },
+    { href: "/calendar", label: "Month", icon: CalendarRange },
     { href: "/dashboard", label: "Stats", icon: BarChart3 },
     { href: "/workouts", label: "Lifts", icon: Dumbbell },
     { href: "/photos", label: "Photos", icon: Camera },
