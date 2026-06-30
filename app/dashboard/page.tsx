@@ -4,6 +4,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { WeightChart } from "@/components/dashboard/WeightChart";
 import { CalorieBars } from "@/components/dashboard/CalorieBars";
 import { VolumeBars } from "@/components/dashboard/VolumeBars";
+import { RealityCheck, RealityCheckPlaceholder } from "@/components/dashboard/RealityCheck";
 import { requireUser, getSettings } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getCalendarToday } from "@/lib/date";
@@ -15,12 +16,7 @@ export default async function DashboardPage() {
   const user = await requireUser();
   const settings = await getSettings();
   const today = getCalendarToday(settings.timezone);
-  const data = await getDashboardData(user.id, today, {
-    calorie_target: settings.calorie_target,
-    protein_target: settings.protein_target,
-    goal_weight: settings.goal_weight,
-    start_weight: settings.start_weight,
-  });
+  const data = await getDashboardData(user.id, today, settings);
 
   const supabase = createClient();
   const { data: partner } = await supabase
@@ -46,6 +42,9 @@ export default async function DashboardPage() {
           <WeightChart data={data.weightSeries} goalWeight={data.goalWeight} />
         </CardContent>
       </Card>
+
+      <RealityCheck check={data.loggingCheck} />
+      <RealityCheckPlaceholder check={data.loggingCheck} />
 
       <Card>
         <CardHeader>

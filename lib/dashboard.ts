@@ -1,6 +1,26 @@
 import { addDays, format, parseISO } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { dateRange, shiftDate } from "@/lib/date";
+import { energyPicture } from "@/lib/body";
+import type { UserSettings } from "@/types/database";
+
+export type LoggingCheck =
+  | {
+      available: false;
+      reason:
+        | "no_tdee"
+        | "not_enough_weights"
+        | "not_enough_food_logs"
+        | "no_recent_loss";
+    }
+  | {
+      available: true;
+      avgLoggedKcal: number;
+      tdee: number;
+      actualWeeklyLossLb: number;
+      estimatedActualIntake: number;
+      gapKcalPerDay: number; // estimatedActualIntake - avgLoggedKcal
+    };
 
 export type DashboardData = {
   weightSeries: { date: string; weight: number | null; avg7: number | null }[];
@@ -16,18 +36,21 @@ export type DashboardData = {
   workoutsThisWeek: number;
   workoutCaloriesThisWeek: number;
   workoutVolumeWeeks: { weekStart: string; volume: number }[];
+  tdee: number | null;
+  loggingCheck: LoggingCheck;
 };
 
 export async function getDashboardData(
   userId: string,
   endDate: string,
-  targets: {
-    calorie_target: number;
-    protein_target: number;
-    goal_weight: number | null;
-    start_weight: number | null;
-  },
+  settings: UserSettings,
 ): Promise<DashboardData> {
+  const targets = {
+    calorie_target: settings.calorie_target,
+    protein_target: settings.protein_target,
+    goal_weight: settings.goal_weight,
+    start_weight: settings.start_weight,
+  };
   const supabase = createClient();
   const since90 = shiftDate(endDate, -90);
   const since14 = shiftDate(endDate, -14);
@@ -129,32 +152,38 @@ export async function getDashboardData(
     } else run = 0;
   }
 
-  // Projected goal date — needs ≥10 weights in last 30 days
+  // Projected goal date + actual weekly rate — needs ≥10 weights in last 30 days.
+  // Regression uses true day offsets (not entry index) so the slope is lb/day,
+  // which gives accurate projection AND a correct rate for the Reality Check.
   const recent30 = dateRange(endDate, 30)
     .map((d) => ({ d, w: weightByDate.get(d) }))
     .filter((x): x is { d: string; w: number } => x.w !== undefined);
   let projectedGoalDate: string | null = null;
   let projectedRate: number | null = null;
-  if (recent30.length >= 10 && targets.goal_weight) {
-    // Linear regression on (dayIndex, weight)
-    const xs = recent30.map((_, i) => i);
-    const ys = recent30.map((x) => x.w);
+  if (recent30.length >= 10) {
+    const firstMs = parseISO(recent30[0].d).getTime();
+    const xs = recent30.map(
+      (p) => (parseISO(p.d).getTime() - firstMs) / (1000 * 60 * 60 * 24),
+    );
+    const ys = recent30.map((p) => p.w);
     const n = xs.length;
     const sumX = xs.reduce((a, b) => a + b, 0);
     const sumY = ys.reduce((a, b) => a + b, 0);
     const sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
     const sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
     const denom = n * sumX2 - sumX * sumX;
-    const slope = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0; // lbs/day
-    const lastWeight = ys[ys.length - 1];
-    if (slope < -0.01) {
-      const daysToGoal = (targets.goal_weight - lastWeight) / slope; // positive
-      if (Number.isFinite(daysToGoal) && daysToGoal > 0 && daysToGoal < 365 * 2) {
-        projectedGoalDate = format(
-          addDays(parseISO(recent30[recent30.length - 1].d), daysToGoal),
-          "yyyy-MM-dd",
-        );
-        projectedRate = -slope * 7;
+    const slope = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0; // lb/day
+    if (slope < -0.005) {
+      projectedRate = -slope * 7; // lb/wk loss
+      if (targets.goal_weight) {
+        const lastWeight = ys[ys.length - 1];
+        const daysToGoal = (targets.goal_weight - lastWeight) / slope;
+        if (Number.isFinite(daysToGoal) && daysToGoal > 0 && daysToGoal < 365 * 2) {
+          projectedGoalDate = format(
+            addDays(parseISO(recent30[recent30.length - 1].d), daysToGoal),
+            "yyyy-MM-dd",
+          );
+        }
       }
     }
   }
@@ -198,6 +227,55 @@ export async function getDashboardData(
     0,
   );
 
+  // Energy picture (TDEE) for the dashboard. Uses the most recent weight in
+  // the series; falls back to start_weight from settings.
+  const latestWeight = [...weightSeries].reverse().find((p) => p.weight !== null);
+  const currentWeightLb = latestWeight?.weight ?? settings.start_weight ?? null;
+  const energy = energyPicture({
+    currentWeightLb,
+    heightIn: settings.height_in,
+    sex: settings.sex,
+    birthdate: settings.birthdate,
+    activity: settings.activity_level,
+    weeklyLossLb: settings.weekly_loss_target,
+  });
+
+  // "Reality check": compare what the logs say vs what the weight loss implies.
+  // Only show when we have ALL of: a TDEE estimate, a real (negative) weight
+  // trend over the last 30 days, AND consistent food logs over the last 14.
+  // Counting only days with ≥500 kcal avoids skewing avg from snack-only logs.
+  const fullLogDays = Array.from(calsByDate.entries()).filter(
+    ([, v]) => v.calories >= 500,
+  );
+  const avgLoggedKcal =
+    fullLogDays.length > 0
+      ? fullLogDays.reduce((s, [, v]) => s + v.calories, 0) / fullLogDays.length
+      : 0;
+
+  let loggingCheck: LoggingCheck;
+  if (!energy.tdee) {
+    loggingCheck = { available: false, reason: "no_tdee" };
+  } else if (projectedRate === null) {
+    loggingCheck = { available: false, reason: "not_enough_weights" };
+  } else if (fullLogDays.length < 7) {
+    loggingCheck = { available: false, reason: "not_enough_food_logs" };
+  } else if (projectedRate <= 0.05) {
+    // Need actual weight loss (positive projectedRate) for the math to be meaningful.
+    loggingCheck = { available: false, reason: "no_recent_loss" };
+  } else {
+    const actualDeficitPerDay = (projectedRate * 3500) / 7;
+    const estimatedActualIntake = Math.round(energy.tdee - actualDeficitPerDay);
+    const gap = Math.round(estimatedActualIntake - avgLoggedKcal);
+    loggingCheck = {
+      available: true,
+      avgLoggedKcal: Math.round(avgLoggedKcal),
+      tdee: energy.tdee,
+      actualWeeklyLossLb: Math.round(projectedRate * 100) / 100,
+      estimatedActualIntake,
+      gapKcalPerDay: gap,
+    };
+  }
+
   return {
     weightSeries,
     goalWeight: targets.goal_weight,
@@ -212,5 +290,7 @@ export async function getDashboardData(
     workoutsThisWeek,
     workoutCaloriesThisWeek,
     workoutVolumeWeeks,
+    tdee: energy.tdee,
+    loggingCheck,
   };
 }
