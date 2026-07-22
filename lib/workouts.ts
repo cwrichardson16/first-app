@@ -29,9 +29,23 @@ export function groupSetsByExercise(sets: ExerciseSet[]) {
 export function calcVolume(sets: ExerciseSet[]) {
   let v = 0;
   for (const s of sets) {
-    if (s.weight && s.reps) v += s.weight * s.reps;
+    if (s.exercise_type !== "cardio" && s.weight && s.reps) v += s.weight * s.reps;
   }
   return v;
+}
+
+export function calcCardioStats(sets: ExerciseSet[]) {
+  let totalDuration = 0;
+  let totalDistance = 0;
+  let totalCalories = 0;
+  for (const s of sets) {
+    if (s.exercise_type === "cardio") {
+      totalDuration += s.duration_minutes ?? 0;
+      totalDistance += s.distance ?? 0;
+      totalCalories += s.calories_burned ?? 0;
+    }
+  }
+  return { totalDuration, totalDistance, totalCalories };
 }
 
 export async function getWorkoutWithSets(

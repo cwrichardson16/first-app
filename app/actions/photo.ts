@@ -45,6 +45,36 @@ export async function recordPhoto(input: unknown) {
   return { ok: true };
 }
 
+const photoUpdateSchema = z.object({
+  pose: z.enum(["front", "side", "back", "other"]),
+  weight_at_time: z.coerce.number().min(50).max(700).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+});
+
+export async function updatePhoto(id: string, input: unknown) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const parsed = photoUpdateSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  const { error } = await supabase
+    .from("progress_photos")
+    .update({
+      pose: parsed.data.pose,
+      weight_at_time: parsed.data.weight_at_time ?? null,
+      notes: parsed.data.notes ?? null,
+    })
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (error) return { error: error.message };
+  revalidatePath("/photos");
+  return { ok: true };
+}
+
 export async function deletePhoto(id: string) {
   const supabase = createClient();
   const {

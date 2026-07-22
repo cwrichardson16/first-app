@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   title: "Cut",
   description: "Personal fitness tracker",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/apple-touch-icon.svg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

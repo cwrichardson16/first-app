@@ -92,6 +92,32 @@ export async function logQuickMeal(quickMealId: string, logDate: string) {
   return { ok: true };
 }
 
+export async function updateFoodEntry(id: string, input: unknown): Promise<FoodFormState> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const parsed = foodSchema.omit({ log_date: true, save_as_quick_meal: true, emoji: true, quick_meal_id: true }).safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  const { error } = await supabase
+    .from("food_entries")
+    .update({
+      name: parsed.data.name,
+      calories: parsed.data.calories,
+      protein: parsed.data.protein,
+      fat: parsed.data.fat,
+      carbs: parsed.data.carbs,
+    })
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (error) return { error: error.message };
+  revalidatePath("/today");
+  return { ok: true };
+}
+
 export async function deleteFoodEntry(id: string) {
   const supabase = createClient();
   const {

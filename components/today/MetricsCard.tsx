@@ -12,11 +12,13 @@ export function MetricsCard({
   logDate,
   yesterdayWeight,
   sleepAvg7,
+  units = "imperial",
 }: {
   log: DailyLog | null;
   logDate: string;
   yesterdayWeight: number | null;
   sleepAvg7: number | null;
+  units?: "imperial" | "metric";
 }) {
   const { toast } = useToast();
   const [weight, setWeight] = React.useState<string>(log?.weight?.toString() ?? "");
@@ -55,7 +57,7 @@ export function MetricsCard({
 
   return (
     <div className="grid grid-cols-3 gap-3">
-      <Field label="Weight (lbs)">
+      <Field label={`Weight (${units === "metric" ? "kg" : "lbs"})`}>
         <Input
           type="number"
           inputMode="decimal"

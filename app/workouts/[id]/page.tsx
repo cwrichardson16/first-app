@@ -46,10 +46,20 @@ export default async function WorkoutDetailPage({ params }: { params: { id: stri
           name: workout.name,
           notes: workout.notes,
           duration_minutes: workout.duration_minutes,
-          exercises: workout.exercises.map((e) => ({
-            exercise_name: e.name,
-            sets: e.sets.map((s) => ({ weight: s.weight, reps: s.reps, rpe: s.rpe })),
-          })),
+          exercises: workout.exercises.map((e) => {
+            const isCardio = e.sets[0]?.exercise_type === "cardio";
+            return {
+              exercise_name: e.name,
+              exercise_type: isCardio ? "cardio" as const : "strength" as const,
+              sets: isCardio ? undefined : e.sets.map((s) => ({ weight: s.weight, reps: s.reps, rpe: s.rpe })),
+              cardio: isCardio ? {
+                duration_minutes: e.sets[0]?.duration_minutes ?? null,
+                distance: e.sets[0]?.distance ?? null,
+                distance_unit: e.sets[0]?.distance_unit ?? null,
+                calories_burned: e.sets[0]?.calories_burned ?? null,
+              } : undefined,
+            };
+          }),
         }}
         workoutNameSuggestions={workoutNames}
         exerciseNameSuggestions={exerciseNames}

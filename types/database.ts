@@ -93,6 +93,11 @@ type ExerciseSetRow = {
   weight: number | null;
   reps: number | null;
   rpe: number | null;
+  exercise_type: "strength" | "cardio";
+  duration_minutes: number | null;
+  distance: number | null;
+  distance_unit: "mi" | "km" | null;
+  calories_burned: number | null;
   created_at: string;
 };
 
@@ -111,6 +116,16 @@ type PartnerLinkRow = {
   user_id: string;
   partner_id: string;
   created_at: string;
+};
+
+type PartnerInviteRow = {
+  id: string;
+  user_id: string;
+  code: string;
+  created_at: string;
+  expires_at: string;
+  used_by: string | null;
+  used_at: string | null;
 };
 
 export type Database = {
@@ -193,8 +208,14 @@ export type Database = {
       };
       partner_link: {
         Row: PartnerLinkRow;
-        Insert: PartnerLinkRow;
+        Insert: Omit<PartnerLinkRow, "created_at"> & { created_at?: string };
         Update: Partial<PartnerLinkRow>;
+        Relationships: [];
+      };
+      partner_invites: {
+        Row: PartnerInviteRow;
+        Insert: Partial<PartnerInviteRow> & { user_id: string; code: string };
+        Update: Partial<PartnerInviteRow>;
         Relationships: [];
       };
     };
@@ -214,3 +235,4 @@ export type Workout = WorkoutRow;
 export type ExerciseSet = ExerciseSetRow;
 export type ProgressPhoto = ProgressPhotoRow;
 export type PartnerLink = PartnerLinkRow;
+export type PartnerInvite = PartnerInviteRow;

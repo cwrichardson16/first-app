@@ -88,10 +88,10 @@ export default async function DashboardPage() {
             <p className="text-sm">
               At your current pace (
               <span className="font-semibold tabular-nums">
-                {data.projectedRate.toFixed(2)} lb/wk
+                {data.projectedRate.toFixed(2)} {settings.units === "metric" ? "kg" : "lb"}/wk
               </span>
-              ), you'll hit{" "}
-              <span className="font-semibold tabular-nums">{data.goalWeight} lbs</span> around{" "}
+              ), you&apos;ll hit{" "}
+              <span className="font-semibold tabular-nums">{data.goalWeight} {settings.units === "metric" ? "kg" : "lbs"}</span> around{" "}
               <span className="font-semibold">
                 {format(parseISO(data.projectedGoalDate), "MMM d, yyyy")}
               </span>
@@ -113,6 +113,24 @@ export default async function DashboardPage() {
           <VolumeBars data={data.workoutVolumeWeeks} />
         </CardContent>
       </Card>
+
+      {data.caloriesBurnedWeeks.some((w) => w.burned > 0) && (
+        <div className="grid grid-cols-4 gap-2">
+          {data.caloriesBurnedWeeks.map((w) => (
+            <Card key={w.weekStart}>
+              <CardContent className="p-3 text-center space-y-0.5">
+                <p className="text-[10px] text-muted-foreground uppercase">
+                  {format(parseISO(w.weekStart), "MMM d")}
+                </p>
+                <p className="text-lg font-semibold tabular-nums text-orange-400">
+                  {w.burned.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-muted-foreground">cal burned</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <BottomNav hasPartner={!!partner} />
     </main>

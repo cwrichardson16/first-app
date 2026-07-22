@@ -39,6 +39,7 @@ export default async function PhotosPage() {
         photo_date: p.photo_date,
         pose: p.pose,
         weight_at_time: p.weight_at_time,
+        notes: p.notes,
         url: signed?.signedUrl ?? "",
       };
     }),

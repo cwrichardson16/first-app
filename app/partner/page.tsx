@@ -1,3 +1,4 @@
+import { Flame } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -28,15 +29,7 @@ export default async function PartnerPage() {
           <CardContent className="pt-6 space-y-3 text-sm">
             <p className="font-medium">No partner linked yet.</p>
             <p className="text-muted-foreground">
-              To link a partner, run this SQL in your Supabase project (replace the UUIDs):
-            </p>
-            <pre className="text-xs bg-muted p-3 rounded font-mono overflow-x-auto">
-{`insert into partner_link (user_id, partner_id) values
-  ('${me.id}', '<partner_user_id>'),
-  ('<partner_user_id>', '${me.id}');`}
-            </pre>
-            <p className="text-muted-foreground text-xs">
-              Both rows are needed so each side can see the other.
+              Go to Settings to generate an invite code or enter your partner&apos;s code.
             </p>
           </CardContent>
         </Card>
@@ -77,7 +70,6 @@ export default async function PartnerPage() {
     updated_at: new Date().toISOString(),
   };
 
-  // Last workout per side
   const [
     myTotals,
     partnerTotals,
@@ -85,6 +77,8 @@ export default async function PartnerPage() {
     { data: partnerLog },
     { data: myLastWorkout },
     { data: partnerLastWorkout },
+    { data: myTodayWorkouts },
+    { data: partnerTodayWorkouts },
   ] = await Promise.all([
     getDayTotals(me.id, today),
     getDayTotals(link.partner_id, today),
@@ -114,6 +108,23 @@ export default async function PartnerPage() {
       .order("workout_date", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase.from("workouts").select("id").eq("user_id", me.id).eq("workout_date", today),
+    supabase.from("workouts").select("id").eq("user_id", link.partner_id).eq("workout_date", today),
+  ]);
+
+  // Sum calories burned for each
+  async function sumCalsBurned(workoutIds: { id: string }[] | null) {
+    if (!workoutIds || workoutIds.length === 0) return 0;
+    const { data } = await supabase
+      .from("exercise_sets")
+      .select("calories_burned")
+      .in("workout_id", workoutIds.map((w) => w.id))
+      .not("calories_burned", "is", null);
+    return (data ?? []).reduce((sum, s) => sum + (s.calories_burned ?? 0), 0);
+  }
+  const [myBurned, partnerBurned] = await Promise.all([
+    sumCalsBurned(myTodayWorkouts),
+    sumCalsBurned(partnerTodayWorkouts),
   ]);
 
   return (
@@ -129,6 +140,7 @@ export default async function PartnerPage() {
           weight={myLog?.weight ?? null}
           steps={myLog?.steps ?? null}
           sleep={myLog?.sleep_hours ?? null}
+          caloriesBurned={myBurned}
           lastWorkout={
             myLastWorkout
               ? { name: myLastWorkout.name, date: myLastWorkout.workout_date }
@@ -142,6 +154,7 @@ export default async function PartnerPage() {
           weight={partnerLog?.weight ?? null}
           steps={partnerLog?.steps ?? null}
           sleep={partnerLog?.sleep_hours ?? null}
+          caloriesBurned={partnerBurned}
           lastWorkout={
             partnerLastWorkout
               ? { name: partnerLastWorkout.name, date: partnerLastWorkout.workout_date }
@@ -162,6 +175,7 @@ function PartnerColumn({
   weight,
   steps,
   sleep,
+  caloriesBurned,
   lastWorkout,
 }: {
   name: string;
@@ -170,6 +184,7 @@ function PartnerColumn({
   weight: number | null;
   steps: number | null;
   sleep: number | null;
+  caloriesBurned: number;
   lastWorkout: { name: string; date: string } | null;
 }) {
   return (
@@ -179,6 +194,16 @@ function PartnerColumn({
       </CardHeader>
       <CardContent className="space-y-3">
         <Row label="Calories" value={totals.calories} target={settings.calorie_target} />
+        {caloriesBurned > 0 && (
+          <div className="flex items-center justify-between text-xs -mt-1">
+            <span className="flex items-center gap-1 text-orange-400">
+              <Flame className="h-3 w-3" /> {caloriesBurned} burned
+            </span>
+            <span className="text-muted-foreground tabular-nums">
+              Net: {(totals.calories - caloriesBurned).toLocaleString()}
+            </span>
+          </div>
+        )}
         <Row label="Protein" value={totals.protein} target={settings.protein_target} unit="g" />
         <Row label="Fat" value={totals.fat} target={settings.fat_target} unit="g" />
         <Row label="Carbs" value={totals.carbs} target={settings.carb_target} unit="g" />
@@ -189,7 +214,7 @@ function PartnerColumn({
           unit=" oz"
         />
         <div className="grid grid-cols-3 gap-2 pt-2 text-xs">
-          <Mini label="Weight" value={weight !== null ? `${weight} lb` : "—"} />
+          <Mini label="Weight" value={weight !== null ? `${weight} ${settings.units === "metric" ? "kg" : "lb"}` : "—"} />
           <Mini label="Steps" value={steps !== null ? steps.toLocaleString() : "—"} />
           <Mini label="Sleep" value={sleep !== null ? `${sleep}h` : "—"} />
         </div>

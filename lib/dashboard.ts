@@ -15,6 +15,7 @@ export type DashboardData = {
   projectedRate: number | null;
   workoutsThisWeek: number;
   workoutVolumeWeeks: { weekStart: string; volume: number }[];
+  caloriesBurnedWeeks: { weekStart: string; burned: number }[];
 };
 
 export async function getDashboardData(
@@ -166,26 +167,34 @@ export async function getDashboardData(
       ? (
           await supabase
             .from("exercise_sets")
-            .select("workout_id, weight, reps")
+            .select("workout_id, weight, reps, exercise_type, calories_burned")
             .in("workout_id", ids)
         ).data ?? []
       : [];
   const volByWorkout = new Map<string, number>();
+  const burnByWorkout = new Map<string, number>();
   for (const s of setRows) {
-    if (s.weight && s.reps) {
+    if (s.exercise_type !== "cardio" && s.weight && s.reps) {
       volByWorkout.set(s.workout_id, (volByWorkout.get(s.workout_id) ?? 0) + s.weight * s.reps);
     }
+    if (s.calories_burned) {
+      burnByWorkout.set(s.workout_id, (burnByWorkout.get(s.workout_id) ?? 0) + s.calories_burned);
+    }
   }
+  const caloriesBurnedWeeks: { weekStart: string; burned: number }[] = [];
   for (let i = 3; i >= 0; i--) {
     const ws = shiftDate(endDate, -7 * i - 6);
     const we = shiftDate(endDate, -7 * i);
     let vol = 0;
+    let burn = 0;
     for (const w of workouts ?? []) {
       if (w.workout_date >= ws && w.workout_date <= we) {
         vol += volByWorkout.get(w.id) ?? 0;
+        burn += burnByWorkout.get(w.id) ?? 0;
       }
     }
     workoutVolumeWeeks.push({ weekStart: ws, volume: Math.round(vol) });
+    caloriesBurnedWeeks.push({ weekStart: ws, burned: Math.round(burn) });
   }
   const thisWeekStart = shiftDate(endDate, -6);
   const workoutsThisWeek = (workouts ?? []).filter(
@@ -205,5 +214,6 @@ export async function getDashboardData(
     projectedRate,
     workoutsThisWeek,
     workoutVolumeWeeks,
+    caloriesBurnedWeeks,
   };
 }

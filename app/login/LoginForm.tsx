@@ -1,42 +1,37 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 
-export function LoginForm({ next, sent }: { next?: string; sent: boolean }) {
+export function LoginForm({ next }: { next?: string }) {
+  const router = useRouter();
   const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [submitted, setSubmitted] = React.useState(sent);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setPending(true);
     const supabase = createClient();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
-    const redirectTo = `${appUrl}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ""}`;
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: redirectTo },
-    });
-    setPending(false);
-    if (error) setError(error.message);
-    else setSubmitted(true);
-  }
 
-  if (submitted) {
-    return (
-      <div className="rounded-xl border bg-card p-6 text-center space-y-2">
-        <p className="font-medium">Check your email.</p>
-        <p className="text-sm text-muted-foreground">
-          We sent a magic link to {email || "your email"}.
-        </p>
-      </div>
-    );
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    setPending(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      router.push(next ?? "/today");
+      router.refresh();
+    }
   }
 
   return (
@@ -54,9 +49,21 @@ export function LoginForm({ next, sent }: { next?: string; sent: boolean }) {
           placeholder="you@example.com"
         />
       </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          required
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••"
+        />
+      </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button type="submit" disabled={pending} className="w-full">
-        {pending ? "Sending…" : "Send magic link"}
+        {pending ? "Signing in…" : "Sign in"}
       </Button>
     </form>
   );

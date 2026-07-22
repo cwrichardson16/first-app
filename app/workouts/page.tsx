@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { BottomNav } from "@/components/BottomNav";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { calcVolume, groupSetsByExercise } from "@/lib/workouts";
+import { calcVolume, calcCardioStats, groupSetsByExercise } from "@/lib/workouts";
 import { prettyDate } from "@/lib/date";
 import { startOfWeek, format, parseISO } from "date-fns";
 import type { ExerciseSet } from "@/types/database";
@@ -76,6 +76,12 @@ export default async function WorkoutsPage() {
             {items.map((w) => {
               const ws = setsByWorkout.get(w.id) ?? [];
               const exCount = groupSetsByExercise(ws).length;
+              const vol = calcVolume(ws);
+              const cardio = calcCardioStats(ws);
+              const stats: string[] = [];
+              if (vol > 0) stats.push(`${Math.round(vol).toLocaleString()} vol`);
+              if (cardio.totalDuration > 0) stats.push(`${Math.round(cardio.totalDuration)} min`);
+              if (cardio.totalCalories > 0) stats.push(`${cardio.totalCalories} cal`);
               return (
                 <li key={w.id}>
                   <Link
@@ -88,9 +94,11 @@ export default async function WorkoutsPage() {
                         {prettyDate(w.workout_date)} · {exCount} ex · {ws.length} sets
                       </p>
                     </div>
-                    <p className="text-xs tabular-nums text-muted-foreground shrink-0">
-                      {Math.round(calcVolume(ws)).toLocaleString()} vol
-                    </p>
+                    {stats.length > 0 && (
+                      <p className="text-xs tabular-nums text-muted-foreground shrink-0">
+                        {stats.join(" · ")}
+                      </p>
+                    )}
                   </Link>
                 </li>
               );

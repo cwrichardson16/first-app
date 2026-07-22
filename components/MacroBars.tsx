@@ -1,3 +1,4 @@
+import { Flame } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -45,13 +46,16 @@ export function MacroBars({
   fat,
   carbs,
   targets,
+  caloriesBurned = 0,
 }: {
   calories: number;
   protein: number;
   fat: number;
   carbs: number;
   targets: { calorie_target: number; protein_target: number; fat_target: number; carb_target: number };
+  caloriesBurned?: number;
 }) {
+  const net = calories - caloriesBurned;
   return (
     <div className="space-y-4">
       <MacroRow
@@ -61,6 +65,17 @@ export function MacroBars({
         target={targets.calorie_target}
         accent="bg-primary"
       />
+      {caloriesBurned > 0 && (
+        <div className="flex items-center justify-between text-sm -mt-2 px-0.5">
+          <span className="flex items-center gap-1 text-orange-400">
+            <Flame className="h-3.5 w-3.5" />
+            <span className="tabular-nums">{caloriesBurned} burned</span>
+          </span>
+          <span className="text-muted-foreground tabular-nums">
+            Net: <span className="font-semibold text-foreground">{net.toLocaleString()}</span>
+          </span>
+        </div>
+      )}
       <div className="grid grid-cols-3 gap-4">
         <MacroRow
           label="Protein"
